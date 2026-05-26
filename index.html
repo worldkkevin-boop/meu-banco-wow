@@ -623,7 +623,7 @@ function render(){
 
     // Nome: hover = tooltip classicdb (rel="item=ID")
     var nameHtml=hasId
-      ? '<a href="https://classicdb.ch/?item='+item.id+'" rel="item='+item.id+'" class="item-link '+qc+'" target="_blank">'+escHtml(item.name)+'</a>'
+      ? '<a href="https://classicdb.ch/?item='+item.id+'" class="item-link '+qc+'" target="_blank">'+escHtml(item.name)+'</a>'
       : '<span class="'+qc+'">'+escHtml(item.name)+'</span>';
 
     var subtypeBadge=item.isubtype&&item.isubtype!=""
