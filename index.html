@@ -213,6 +213,26 @@
     footer{border-top:1px solid #1a1408;padding:14px 24px;text-align:center;color:#444;font-size:11px;margin-top:32px;}
     footer a{color:#555;text-decoration:none;}
     footer a:hover{color:var(--gold);}
+
+    /* WoW-style tooltip */
+    #kz-tt{
+      display:none;position:fixed;z-index:9999;
+      background:linear-gradient(180deg,#120c04 0%,#0a0600 100%);
+      border:1px solid #6b5a2a;border-radius:3px;
+      padding:10px 12px;min-width:180px;max-width:290px;
+      font-size:12px;pointer-events:none;
+      box-shadow:0 0 20px rgba(0,0,0,.9);
+    }
+    .tt-name{font-size:14px;font-weight:700;margin-bottom:5px;}
+    .tt-ilvl{color:#ffd700;font-size:11px;margin-bottom:3px;}
+    .tt-row{display:flex;justify-content:space-between;color:#c8c8c8;font-size:11px;margin:1px 0;}
+    .tt-line{color:#c8c8c8;font-size:11px;margin:1px 0;}
+    .tt-stat{color:#1eff00;font-size:11px;margin:1px 0;}
+    .tt-bind{color:#c8c8c8;font-size:11px;margin:2px 0;}
+    .tt-req{color:#c8c8c8;font-size:11px;margin:2px 0;}
+    .tt-desc{color:#ffd700;font-style:italic;font-size:11px;margin-top:4px;word-break:break-word;}
+    .tt-sep{border-top:1px solid #2a2010;margin:5px 0;}
+    .tt-db-badge{color:#555;font-size:9px;margin-top:6px;text-align:right;}
   </style>
   <script>var whTooltips={colorLinks:false,iconSize:'medium',renameLinks:false};</script>
   <script src="https://classicdb.ch/templates/wowhead/js/power.js" async></script>
@@ -281,6 +301,8 @@
   <div class="empty" id="empty-msg"><div class="big">🎒</div>Importe dados acima para começar.</div>
 </div>
 
+<div id="kz-tt"></div>
+
 <footer>
   <strong>KZ_Banco</strong> addon · SandWorlds 1.12.1 ·
   <a href="https://github.com/worldkkevin-boop/meu-banco-wow" target="_blank">GitHub</a>
@@ -296,6 +318,98 @@ var ilvlMin      = 0;
 var Q_NAME  = ["Pobre","Comum","Incomum","Raro","Épico","Lendário"];
 var Q_COLOR = ["#9d9d9d","#e0e0e0","#1eff00","#0070dd","#a335ee","#ff8000"];
 var Q_CLASS = ["q0","q1c","q2","q3","q4","q5"];
+
+// Item database from itemcache.wdb
+var ITEM_DB = {};
+var dbLoaded = false;
+
+function fetchItemDB(){
+  try{
+    var xhr=new XMLHttpRequest();
+    xhr.open('GET','items_db.json',true);
+    xhr.onload=function(){
+      if(xhr.status===200){
+        try{
+          ITEM_DB=JSON.parse(xhr.responseText);
+          dbLoaded=true;
+          if(currentChar&&DB[currentChar]) render();
+        }catch(e){}
+      }
+    };
+    xhr.send();
+  }catch(e){}
+}
+
+function getDbEntry(id){
+  if(!id||id==="0"||!dbLoaded) return null;
+  return ITEM_DB[id]||null;
+}
+
+function enrichItem(item){
+  var db=getDbEntry(item.id);
+  if(!db) return item;
+  return{
+    id:item.id, name:item.name, quality:item.quality,
+    count:item.count, icon:item.icon,
+    ilvl:item.ilvl||db.ilvl||0,
+    itype:item.itype||db.itype||"",
+    isubtype:item.isubtype||db.isubtype||"",
+  };
+}
+
+function buildTooltipHtml(item,db){
+  if(!db) return "";
+  var q=Math.min(Math.max(item.quality||0,0),5);
+  var html='<div class="tt-name" style="color:'+Q_COLOR[q]+'">'+escHtml(db.name||item.name)+'</div>';
+  if(db.ilvl>0) html+='<div class="tt-ilvl">Item Level '+db.ilvl+'</div>';
+  if(db.isubtype||db.slot){
+    html+='<div class="tt-row"><span>'+escHtml(db.isubtype||db.itype||"")+'</span><span>'+escHtml(db.slot||"")+'</span></div>';
+  }
+  if(db.armor>0) html+='<div class="tt-line">'+db.armor+' Armadura</div>';
+  if(db.dmgMin>0||db.dmgMax>0){
+    html+='<div class="tt-line">'+db.dmgMin+' – '+db.dmgMax+' Dano</div>';
+    if(db.speed>0){
+      var spd=(db.speed/1000).toFixed(2);
+      var dps=(((db.dmgMin+db.dmgMax)/2)/(db.speed/1000)).toFixed(1);
+      html+='<div class="tt-row"><span>Velocidade '+spd+'</span><span>('+dps+' dano/s)</span></div>';
+    }
+  }
+  if(db.stats&&db.stats.length>0){
+    html+='<div class="tt-sep"></div>';
+    for(var i=0;i<db.stats.length;i++){
+      var s=db.stats[i];
+      html+='<div class="tt-stat">'+(s.value>0?'+':'')+s.value+' '+escHtml(s.label)+'</div>';
+    }
+  }
+  if(db.bind){html+='<div class="tt-sep"></div><div class="tt-bind">'+escHtml(db.bind)+'</div>';}
+  if(db.reqLevel>0) html+='<div class="tt-req">Requer Nível '+db.reqLevel+'</div>';
+  if(db.desc) html+='<div class="tt-sep"></div><div class="tt-desc">'+escHtml(db.desc)+'</div>';
+  html+='<div class="tt-db-badge">DB Local</div>';
+  return html;
+}
+
+var _ttTimer=null;
+function showTT(e,el){
+  var id=el.getAttribute('data-id');
+  var q=parseInt(el.getAttribute('data-q')||'1');
+  var db=getDbEntry(id);
+  if(!db) return;
+  var tt=document.getElementById('kz-tt');
+  tt.innerHTML=buildTooltipHtml({quality:q},db);
+  tt.style.display='block';
+  posTT(e);
+}
+function hideTT(){ document.getElementById('kz-tt').style.display='none'; }
+function posTT(e){
+  var tt=document.getElementById('kz-tt');
+  if(tt.style.display==='none') return;
+  var x=e.clientX+16, y=e.clientY+16;
+  var w=tt.offsetWidth, h=tt.offsetHeight;
+  if(x+w>window.innerWidth-8) x=e.clientX-w-8;
+  if(y+h>window.innerHeight-8) y=e.clientY-h-8;
+  tt.style.left=x+'px'; tt.style.top=y+'px';
+}
+document.addEventListener('mousemove',function(e){ posTT(e); });
 
 function loadStorage(){ try{ var r=localStorage.getItem("kzbanco_db"); if(r) DB=JSON.parse(r); }catch(e){ DB={}; } }
 function saveStorage(){ try{ localStorage.setItem("kzbanco_db",JSON.stringify(DB)); }catch(e){} }
@@ -485,10 +599,12 @@ function render(){
 
   emsg.style.display="none";
 
-  grid.innerHTML=filtered.map(function(item){
+  grid.innerHTML=filtered.map(function(raw){
+    var item=enrichItem(raw);
     var q=Math.min(Math.max(item.quality||0,0),5);
     var qc=Q_CLASS[q];
     var hasId=item.id&&item.id!=="0"&&item.id!=="";
+    var hasDb=hasId&&dbLoaded&&!!ITEM_DB[item.id];
     var icon=iconUrl(item.icon);
     var imgTag=icon
       ? '<img src="'+icon+'" onerror="this.src=\'https://wow.zamimg.com/images/wow/icons/large/inv_misc_questionmark.jpg\'" alt="" loading="lazy"/>'
@@ -497,45 +613,36 @@ function render(){
     var countBadge=item.count>1?'<span class="item-badge">'+item.count+'</span>':'';
     var ilvlBadge=item.ilvl>0?'<span class="ilvl-badge">'+item.ilvl+'</span>':'';
 
-    // Ícone com tooltip classicdb se tiver ID
+    // Ícone: link classicdb se tiver ID mas sem o rel= (tooltip é nosso agora)
     var iconWrap=hasId
-      ? '<a href="https://classicdb.ch/?item='+item.id+'" rel="item='+item.id+'" target="_blank" class="icon-link">'
+      ? '<a href="https://classicdb.ch/?item='+item.id+'" target="_blank" class="icon-link">'
           +'<div class="item-icon-wrap">'+imgTag+countBadge+ilvlBadge+'</div></a>'
       : '<div class="item-icon-wrap">'+imgTag+countBadge+ilvlBadge+'</div>';
 
     // Nome
     var nameHtml=hasId
-      ? '<a href="https://classicdb.ch/?item='+item.id+'" rel="item='+item.id+'" class="item-link '+qc+'" target="_blank">'+escHtml(item.name)+'</a>'
+      ? '<a href="https://classicdb.ch/?item='+item.id+'" class="item-link '+qc+'" target="_blank">'+escHtml(item.name)+'</a>'
       : '<span class="'+qc+'">'+escHtml(item.name)+'</span>';
 
     // Badge de subtipo (Couro, Pano, Placa, etc.)
     var subtypeBadge=item.isubtype&&item.isubtype!=""
       ? '<span class="subtype-badge">'+escHtml(item.isubtype)+'</span>' : '';
 
-    var titleStr=escHtml(item.name)+(item.ilvl>0?' — ilvl '+item.ilvl:'')+(item.isubtype?' ('+item.isubtype+')':'');
+    var ttAttr=hasDb
+      ? ' onmouseenter="showTT(event,this)" onmouseleave="hideTT()"' : '';
 
-    return '<div class="item-card '+qc+'" title="'+titleStr+'">'
+    return '<div class="item-card '+qc+'" data-id="'+(item.id||'')+'" data-q="'+q+'"'+ttAttr+'>'
       +iconWrap
       +'<div class="item-name">'+nameHtml+'</div>'
       +subtypeBadge
       +'</div>';
   }).join("");
 
-  setTimeout(refreshTooltips,200);
-}
-
-function refreshTooltips(){
-  try{
-    var W=window.$WH||window.WH;
-    if(!W) return;
-    if(W.Tooltip&&W.Tooltip.bindTriggers) W.Tooltip.bindTriggers();
-    else if(W.Tooltip&&W.Tooltip.init) W.Tooltip.init();
-    else if(W.init) W.init();
-  }catch(e){}
 }
 
 // ---- INIT ----
 loadStorage();
+fetchItemDB();
 var initChars=Object.keys(DB);
 if(initChars.length>0){
   renderCharTabs();
