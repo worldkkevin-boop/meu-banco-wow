@@ -610,7 +610,9 @@ function render(){
       : '<img src="https://wow.zamimg.com/images/wow/icons/large/inv_misc_questionmark.jpg" alt=""/>';
 
     var countBadge=item.count>1?'<span class="item-badge">'+item.count+'</span>':'';
-    var ilvlBadge=item.ilvl>0?'<span class="ilvl-badge">'+item.ilvl+'</span>':'';
+    var _db=getDbEntry(item.id);
+    var _lvl=(_db&&_db.reqLevel>0)?_db.reqLevel:(item.ilvl>0?item.ilvl:0);
+    var ilvlBadge=_lvl>0?'<span class="ilvl-badge">'+_lvl+'</span>':'';
 
     var iconInner='<div class="item-icon-wrap">'+imgTag+countBadge+ilvlBadge+'</div>';
 
