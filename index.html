@@ -619,9 +619,7 @@ function render(){
     // Ícone: hover = nosso tooltip do DB local
     var ttAttr=hasDb
       ? ' data-id="'+item.id+'" data-q="'+q+'" onmouseenter="showTT(event,this)" onmouseleave="hideTT()"' : '';
-    var iconWrap=hasId
-      ? '<a href="https://classicdb.ch/?item='+item.id+'" target="_blank" class="icon-link"'+ttAttr+'>'+iconInner+'</a>'
-      : '<div class="item-icon-wrap"'+ttAttr+'>'+imgTag+countBadge+ilvlBadge+'</div>';
+    var iconWrap='<div class="icon-link"'+ttAttr+'>'+iconInner+'</div>';
 
     // Nome: hover = tooltip classicdb (rel="item=ID")
     var nameHtml=hasId
