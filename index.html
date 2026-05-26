@@ -188,6 +188,15 @@
     a.item-link{text-decoration:none;transition:opacity .15s;}
     a.item-link:hover{opacity:.75;text-decoration:underline;}
 
+    a.icon-link{display:block;text-decoration:none;}
+    a.icon-link:hover .item-icon-wrap{filter:brightness(1.2);}
+
+    .subtype-badge{
+      display:block;text-align:center;
+      color:#666;font-size:9px;margin-top:1px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;
+    }
+
     .empty{color:var(--muted);text-align:center;padding:60px 20px;font-size:13px;}
     .empty .big{font-size:40px;margin-bottom:12px;}
 
@@ -249,8 +258,7 @@
     </div>
     <div class="ilvl-wrap">
       <span>ilvl ≥</span>
-      <input type="range" id="ilvl-min" min="0" max="100" value="0" oninput="updateIlvl();render()">
-      <span class="ilvl-val" id="ilvl-val">0</span>
+      <input type="number" id="ilvl-min" min="0" max="999" value="0" oninput="updateIlvl();render()" style="width:54px;background:#0d0a05;border:1px solid #2a2010;border-radius:4px;color:var(--gold);font-size:12px;font-weight:700;padding:5px 6px;outline:none;text-align:center;">
     </div>
     <select id="sort-select" onchange="render()">
       <option value="quality">Qualidade</option>
@@ -314,6 +322,8 @@ function parseItems(str){
       count:   parseInt(e[3])||1,
       icon:    e[4]||"",
       ilvl:    parseInt(e[5])||0,
+      itype:   e[6]||"",
+      isubtype:e[7]||"",
     });
   }
   return items;
@@ -431,7 +441,6 @@ function toggleQ(q){
 
 function updateIlvl(){
   ilvlMin=parseInt(document.getElementById("ilvl-min").value)||0;
-  document.getElementById("ilvl-val").textContent=ilvlMin;
 }
 
 // ---- RENDER ----
@@ -481,21 +490,34 @@ function render(){
     var qc=Q_CLASS[q];
     var hasId=item.id&&item.id!=="0"&&item.id!=="";
     var icon=iconUrl(item.icon);
-
-    var iconHtml=icon
-      ? '<img src="'+icon+'" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" alt="" loading="lazy"/><span class="icon-placeholder" style="display:none">🎒</span>'
-      : '<span class="icon-placeholder">🎒</span>';
-
-    var nameHtml=hasId
-      ? '<a href="https://classicdb.ch/?item='+item.id+'" rel="item='+item.id+'" class="item-link '+qc+'" target="_blank">'+escHtml(item.name)+'</a>'
-      : '<span class="'+qc+'">'+escHtml(item.name)+'</span>';
+    var imgTag=icon
+      ? '<img src="'+icon+'" onerror="this.src=\'https://wow.zamimg.com/images/wow/icons/large/inv_misc_questionmark.jpg\'" alt="" loading="lazy"/>'
+      : '<img src="https://wow.zamimg.com/images/wow/icons/large/inv_misc_questionmark.jpg" alt=""/>';
 
     var countBadge=item.count>1?'<span class="item-badge">'+item.count+'</span>':'';
     var ilvlBadge=item.ilvl>0?'<span class="ilvl-badge">'+item.ilvl+'</span>':'';
 
-    return '<div class="item-card '+qc+'" title="'+escHtml(item.name)+' (ilvl '+item.ilvl+')">'
-      +'<div class="item-icon-wrap">'+iconHtml+countBadge+ilvlBadge+'</div>'
+    // Ícone com tooltip classicdb se tiver ID
+    var iconWrap=hasId
+      ? '<a href="https://classicdb.ch/?item='+item.id+'" rel="item='+item.id+'" target="_blank" class="icon-link">'
+          +'<div class="item-icon-wrap">'+imgTag+countBadge+ilvlBadge+'</div></a>'
+      : '<div class="item-icon-wrap">'+imgTag+countBadge+ilvlBadge+'</div>';
+
+    // Nome
+    var nameHtml=hasId
+      ? '<a href="https://classicdb.ch/?item='+item.id+'" rel="item='+item.id+'" class="item-link '+qc+'" target="_blank">'+escHtml(item.name)+'</a>'
+      : '<span class="'+qc+'">'+escHtml(item.name)+'</span>';
+
+    // Badge de subtipo (Couro, Pano, Placa, etc.)
+    var subtypeBadge=item.isubtype&&item.isubtype!=""
+      ? '<span class="subtype-badge">'+escHtml(item.isubtype)+'</span>' : '';
+
+    var titleStr=escHtml(item.name)+(item.ilvl>0?' — ilvl '+item.ilvl:'')+(item.isubtype?' ('+item.isubtype+')':'');
+
+    return '<div class="item-card '+qc+'" title="'+titleStr+'">'
+      +iconWrap
       +'<div class="item-name">'+nameHtml+'</div>'
+      +subtypeBadge
       +'</div>';
   }).join("");
 
