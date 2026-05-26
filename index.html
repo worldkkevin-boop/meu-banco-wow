@@ -239,6 +239,9 @@
       <button class="tab-btn" id="tab-bank" onclick="showTab('bank')">
         Baú <span class="tab-count" id="count-bank">0</span>
       </button>
+      <button class="tab-btn" id="tab-guild" onclick="showTab('guild')">
+        Guilda <span class="tab-count" id="count-guild">0</span>
+      </button>
     </div>
 
     <input type="text" id="search" placeholder="Filtrar por nome..." oninput="renderItems()" style="display:none" />
@@ -285,12 +288,13 @@ function parseCode(code) {
   if (code.indexOf("BANCO1;") !== 0) return null;
 
   var parts = code.split(";");
-  if (parts.length < 5) return null;
+  if (parts.length < 4) return null;
 
   var charName  = parts[1];
   var timestamp = parts[2];
   var bagsStr   = parts[3];
-  var bankStr   = parts[4];
+  var bankStr   = parts[4] || "";
+  var guildStr  = parts[5] || "";
 
   function parseItems(str) {
     var items = [];
@@ -314,6 +318,7 @@ function parseCode(code) {
     lastUpdate: timestamp,
     bags:      parseItems(bagsStr),
     bank:      parseItems(bankStr),
+    guild:     parseItems(guildStr),
   };
 }
 
@@ -329,6 +334,7 @@ function doImport() {
     lastUpdate: parsed.lastUpdate,
     bags:       parsed.bags,
     bank:       parsed.bank,
+    guild:      parsed.guild,
   };
   saveStorage();
 
@@ -370,21 +376,24 @@ function selectChar(name) {
   var bags = data.bags || [];
   var bank = data.bank || [];
 
+  var guild = data.guild || [];
   document.getElementById("stat-bags").textContent    = bags.length;
   document.getElementById("stat-bank").textContent    = bank.length;
-  document.getElementById("stat-total").textContent   = bags.length + bank.length;
+  document.getElementById("stat-total").textContent   = bags.length + bank.length + guild.length;
   document.getElementById("stat-updated").textContent = data.lastUpdate || "";
   document.getElementById("stats-bar").style.display  = "flex";
 
-  document.getElementById("count-bags").textContent = bags.length;
-  document.getElementById("count-bank").textContent = bank.length;
-  document.getElementById("tabs").style.display     = "flex";
+  document.getElementById("count-bags").textContent   = bags.length;
+  document.getElementById("count-bank").textContent   = bank.length;
+  document.getElementById("count-guild").textContent  = guild.length;
+  document.getElementById("tabs").style.display       = "flex";
   document.getElementById("search").style.display   = "";
   document.getElementById("search").value           = "";
 
   currentTab = "bags";
-  document.getElementById("tab-bags").className = "tab-btn active";
-  document.getElementById("tab-bank").className = "tab-btn";
+  document.getElementById("tab-bags").className  = "tab-btn active";
+  document.getElementById("tab-bank").className  = "tab-btn";
+  document.getElementById("tab-guild").className = "tab-btn";
 
   renderItems();
 }
@@ -398,8 +407,9 @@ function resetView() {
 
 function showTab(tab) {
   currentTab = tab;
-  document.getElementById("tab-bags").className = "tab-btn" + (tab === "bags" ? " active" : "");
-  document.getElementById("tab-bank").className = "tab-btn" + (tab === "bank" ? " active" : "");
+  document.getElementById("tab-bags").className  = "tab-btn" + (tab === "bags"  ? " active" : "");
+  document.getElementById("tab-bank").className  = "tab-btn" + (tab === "bank"  ? " active" : "");
+  document.getElementById("tab-guild").className = "tab-btn" + (tab === "guild" ? " active" : "");
   renderItems();
 }
 
@@ -408,7 +418,7 @@ function renderItems() {
   if (!currentChar || !DB[currentChar]) { resetView(); return; }
 
   var data   = DB[currentChar];
-  var source = currentTab === "bags" ? (data.bags||[]) : (data.bank||[]);
+  var source = currentTab === "bags" ? (data.bags||[]) : currentTab === "bank" ? (data.bank||[]) : (data.guild||[]);
   var filter = (document.getElementById("search").value || "").toLowerCase();
 
   var filtered = filter
