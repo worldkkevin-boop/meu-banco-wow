@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meu Banco WoW — SandWorlds</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0f;
+      color: #c8c8c8;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-bottom: 2px solid #c6a951;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      color: #c6a951;
+      text-shadow: 0 0 12px rgba(198,169,81,0.4);
+      letter-spacing: 1px;
+    }
+
+    header span {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* Character selector */
+    .char-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .char-btn {
+      background: #1e1e2e;
+      border: 1px solid #333;
+      color: #aaa;
+      padding: 8px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.15s;
+    }
+
+    .char-btn:hover { border-color: #c6a951; color: #c6a951; }
+    .char-btn.active {
+      background: #2a2200;
+      border-color: #c6a951;
+      color: #c6a951;
+      font-weight: bold;
+    }
+
+    /* Info bar */
+    .info-bar {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      background: #151520;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .info-bar .label { color: #666; font-size: 0.82rem; }
+    .info-bar .value { color: #eee; font-weight: bold; margin-left: 4px; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #2a2a3a;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: #777;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.15s;
+    }
+
+    .tab-btn:hover { color: #ccc; }
+    .tab-btn.active {
+      color: #c6a951;
+      border-bottom-color: #c6a951;
+    }
+
+    .tab-count {
+      background: #2a2a3a;
+      color: #aaa;
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 0.75rem;
+      margin-left: 6px;
+    }
+
+    /* Search */
+    .search-bar {
+      margin-bottom: 16px;
+    }
+
+    .search-bar input {
+      background: #151520;
+      border: 1px solid #2a2a3a;
+      color: #eee;
+      padding: 8px 14px;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 320px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-bar input:focus { border-color: #c6a951; }
+    .search-bar input::placeholder { color: #444; }
+
+    /* Item grid */
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+    }
+
+    .item-card {
+      background: #151520;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: border-color 0.15s;
+    }
+
+    .item-card:hover { border-color: #3a3a5a; }
+
+    .item-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: #0d0d0f;
+      border: 1px solid #333;
+    }
+
+    .item-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .item-icon.no-img {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .item-info { flex: 1; min-width: 0; }
+
+    .item-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-count {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    /* Quality colors */
+    .q0 { color: #9d9d9d; }
+    .q1 { color: #ffffff; }
+    .q2 { color: #1eff00; }
+    .q3 { color: #0070dd; }
+    .q4 { color: #a335ee; }
+    .q5 { color: #ff8000; }
+    .q6 { color: #e6cc80; }
+
+    .item-card.q0 { border-left: 3px solid #9d9d9d; }
+    .item-card.q2 { border-left: 3px solid #1eff00; }
+    .item-card.q3 { border-left: 3px solid #0070dd; }
+    .item-card.q4 { border-left: 3px solid #a335ee; }
+    .item-card.q5 { border-left: 3px solid #ff8000; }
+
+    /* Empty / loading states */
+    .state-msg {
+      text-align: center;
+      color: #555;
+      padding: 60px 20px;
+      font-size: 1rem;
+    }
+
+    .state-msg .big { font-size: 2.5rem; margin-bottom: 12px; }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #444;
+      font-size: 0.78rem;
+      border-top: 1px solid #1a1a2a;
+      margin-top: 40px;
+    }
+
+    footer a { color: #666; text-decoration: none; }
+    footer a:hover { color: #c6a951; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚔ Meu Banco WoW</h1>
+    <span>SandWorlds 1.12.1 — bags & baú dos personagens</span>
+  </div>
+</header>
+
+<div class="container">
+  <div id="char-bar" class="char-bar"></div>
+  <div id="info-bar" class="info-bar" style="display:none"></div>
+
+  <div class="tabs" id="tabs" style="display:none">
+    <button class="tab-btn active" id="tab-bags" onclick="showTab('bags')">
+      Bags <span class="tab-count" id="count-bags">0</span>
+    </button>
+    <button class="tab-btn" id="tab-bank" onclick="showTab('bank')">
+      Baú <span class="tab-count" id="count-bank">0</span>
+    </button>
+  </div>
+
+  <div class="search-bar" id="search-bar" style="display:none">
+    <input type="text" id="search" placeholder="Buscar item..." oninput="renderItems()" />
+  </div>
+
+  <div id="item-grid" class="item-grid"></div>
+  <div id="state-msg" class="state-msg">
+    <div class="big">🎒</div>
+    Selecione um personagem acima.
+  </div>
+</div>
+
+<footer>
+  Addon <strong>KZ_Banco</strong> — dados exportados pelo addon e sincronizados via script.
+  <br/>
+  <a href="https://github.com/worldkkevin-boop/meu-banco-wow" target="_blank">github.com/worldkkevin-boop/meu-banco-wow</a>
+</footer>
+
+<script>
+  const QUALITY_NAMES = ['Comum','Comum','Incomum','Raro','Épico','Lendário'];
+  let currentData = null;
+  let currentTab  = 'bags';
+
+  // Busca index de personagens disponíveis
+  async function loadIndex() {
+    try {
+      const res = await fetch('data/index.json?v=' + Date.now());
+      if (!res.ok) throw new Error('sem dados');
+      return await res.json(); // [{char, file, lastUpdate}]
+    } catch(e) {
+      return null;
+    }
+  }
+
+  async function loadChar(file) {
+    const res = await fetch('data/' + file + '?v=' + Date.now());
+    if (!res.ok) throw new Error('arquivo nao encontrado');
+    return await res.json();
+  }
+
+  function qualityClass(q) {
+    const n = parseInt(q) || 0;
+    return 'q' + Math.min(n, 6);
+  }
+
+  function itemIcon(id) {
+    if (!id) return '<div class="item-icon no-img">🎒</div>';
+    // Ícone via API do wowhead clássico
+    const url = `https://wow.zamimg.com/images/wow/icons/small/inv_misc_questionmark.jpg`;
+    // Tenta ícone do wowhead vanilla
+    return `<div class="item-icon"><img src="https://wow.zamimg.com/icons/wow/items/small/${id}.jpg"
+      onerror="this.src='https://wow.zamimg.com/images/wow/icons/small/inv_misc_questionmark.jpg'"
+      alt="" loading="lazy"/></div>`;
+  }
+
+  function renderItems() {
+    const query  = (document.getElementById('search').value || '').toLowerCase();
+    const source = currentTab === 'bags' ? currentData.bags : currentData.bank;
+    const grid   = document.getElementById('item-grid');
+
+    let filtered = source;
+    if (query) {
+      filtered = source.filter(i => i.name.toLowerCase().indexOf(query) !== -1);
+    }
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '';
+      setStateMsg(query ? '🔍 Nenhum item encontrado.' : '📦 Nenhum item aqui.');
+      return;
+    }
+
+    hideStateMsg();
+    grid.innerHTML = filtered.map(item => {
+      const qc = qualityClass(item.quality);
+      const countLabel = item.count > 1 ? `x${item.count}` : '';
+      return `<div class="item-card ${qc}">
+        ${itemIcon(item.id)}
+        <div class="item-info">
+          <div class="item-name ${qc}" title="${item.name}">${item.name}</div>
+          <div class="item-count">${countLabel ? countLabel + ' &nbsp;·&nbsp; ' : ''}${QUALITY_NAMES[Math.min(item.quality||0,5)] || ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function showTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-bags').classList.toggle('active', tab === 'bags');
+    document.getElementById('tab-bank').classList.toggle('active', tab === 'bank');
+    renderItems();
+  }
+
+  function setStateMsg(msg) {
+    document.getElementById('state-msg').style.display = '';
+    document.getElementById('state-msg').innerHTML = msg;
+    document.getElementById('item-grid').innerHTML = '';
+  }
+
+  function hideStateMsg() {
+    document.getElementById('state-msg').style.display = 'none';
+  }
+
+  async function selectChar(file, btnEl) {
+    document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+
+    setStateMsg('<div class="big">⏳</div>Carregando...');
+    document.getElementById('tabs').style.display = 'none';
+    document.getElementById('info-bar').style.display = 'none';
+    document.getElementById('search-bar').style.display = 'none';
+
+    try {
+      currentData = await loadChar(file);
+    } catch(e) {
+      setStateMsg('❌ Erro ao carregar dados do personagem.');
+      return;
+    }
+
+    // Info bar
+    const infoBar = document.getElementById('info-bar');
+    infoBar.style.display = 'flex';
+    infoBar.innerHTML = `
+      <div><span class="label">Personagem:</span><span class="value">${currentData.character}</span></div>
+      <div><span class="label">Realm:</span><span class="value">${currentData.realm}</span></div>
+      <div><span class="label">Última atualização:</span><span class="value">${currentData.lastUpdate}</span></div>
+      <div><span class="label">Bags:</span><span class="value">${(currentData.bags||[]).length} itens</span></div>
+      <div><span class="label">Baú:</span><span class="value">${(currentData.bank||[]).length} itens</span></div>
+    `;
+
+    document.getElementById('count-bags').textContent = (currentData.bags||[]).length;
+    document.getElementById('count-bank').textContent = (currentData.bank||[]).length;
+
+    document.getElementById('tabs').style.display = 'flex';
+    document.getElementById('search-bar').style.display = '';
+    document.getElementById('search').value = '';
+    currentTab = 'bags';
+    document.getElementById('tab-bags').classList.add('active');
+    document.getElementById('tab-bank').classList.remove('active');
+
+    renderItems();
+  }
+
+  async function init() {
+    const index = await loadIndex();
+    const bar   = document.getElementById('char-bar');
+
+    if (!index || index.length === 0) {
+      bar.innerHTML = '';
+      setStateMsg('<div class="big">📭</div>Nenhum dado disponível ainda.<br/><small>Abra o baú no jogo e execute o script de sync.</small>');
+      return;
+    }
+
+    bar.innerHTML = index.map((entry, i) =>
+      `<button class="char-btn" id="cbtn-${i}" onclick="selectChar('${entry.file}', this)">
+        ${entry.char}
+      </button>`
+    ).join('');
+
+    // Auto-seleciona o primeiro
+    const firstBtn = document.getElementById('cbtn-0');
+    selectChar(index[0].file, firstBtn);
+  }
+
+  init();
+</script>
+</body>
+</html>
