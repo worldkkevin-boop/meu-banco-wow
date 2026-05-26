@@ -613,31 +613,33 @@ function render(){
     var countBadge=item.count>1?'<span class="item-badge">'+item.count+'</span>':'';
     var ilvlBadge=item.ilvl>0?'<span class="ilvl-badge">'+item.ilvl+'</span>':'';
 
-    // Ícone: link classicdb se tiver ID mas sem o rel= (tooltip é nosso agora)
-    var iconWrap=hasId
-      ? '<a href="https://classicdb.ch/?item='+item.id+'" target="_blank" class="icon-link">'
-          +'<div class="item-icon-wrap">'+imgTag+countBadge+ilvlBadge+'</div></a>'
-      : '<div class="item-icon-wrap">'+imgTag+countBadge+ilvlBadge+'</div>';
+    var iconInner='<div class="item-icon-wrap">'+imgTag+countBadge+ilvlBadge+'</div>';
 
-    // Nome
+    // Ícone: hover = nosso tooltip do DB local
+    var ttAttr=hasDb
+      ? ' data-id="'+item.id+'" data-q="'+q+'" onmouseenter="showTT(event,this)" onmouseleave="hideTT()"' : '';
+    var iconWrap=hasId
+      ? '<a href="https://classicdb.ch/?item='+item.id+'" target="_blank" class="icon-link"'+ttAttr+'>'+iconInner+'</a>'
+      : '<div class="item-icon-wrap"'+ttAttr+'>'+imgTag+countBadge+ilvlBadge+'</div>';
+
+    // Nome: hover = tooltip classicdb (rel="item=ID")
     var nameHtml=hasId
-      ? '<a href="https://classicdb.ch/?item='+item.id+'" class="item-link '+qc+'" target="_blank">'+escHtml(item.name)+'</a>'
+      ? '<a href="https://classicdb.ch/?item='+item.id+'" rel="item='+item.id+'" class="item-link '+qc+'" target="_blank">'+escHtml(item.name)+'</a>'
       : '<span class="'+qc+'">'+escHtml(item.name)+'</span>';
 
-    // Badge de subtipo (Couro, Pano, Placa, etc.)
     var subtypeBadge=item.isubtype&&item.isubtype!=""
       ? '<span class="subtype-badge">'+escHtml(item.isubtype)+'</span>' : '';
 
-    var ttAttr=hasDb
-      ? ' onmouseenter="showTT(event,this)" onmouseleave="hideTT()"' : '';
-
-    return '<div class="item-card '+qc+'" data-id="'+(item.id||'')+'" data-q="'+q+'"'+ttAttr+'>'
+    return '<div class="item-card '+qc+'">'
       +iconWrap
       +'<div class="item-name">'+nameHtml+'</div>'
       +subtypeBadge
       +'</div>';
   }).join("");
 
+  setTimeout(function(){
+    try{if(window.$WH&&$WH.Tooltip&&$WH.Tooltip.bindTriggers)$WH.Tooltip.bindTriggers();}catch(e){}
+  },200);
 }
 
 // ---- INIT ----
