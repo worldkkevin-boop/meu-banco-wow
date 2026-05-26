@@ -384,7 +384,6 @@ function buildTooltipHtml(item,db){
   if(db.bind){html+='<div class="tt-sep"></div><div class="tt-bind">'+escHtml(db.bind)+'</div>';}
   if(db.reqLevel>0) html+='<div class="tt-req">Requer Nível '+db.reqLevel+'</div>';
   if(db.desc) html+='<div class="tt-sep"></div><div class="tt-desc">'+escHtml(db.desc)+'</div>';
-  html+='<div class="tt-db-badge">DB Local</div>';
   return html;
 }
 
