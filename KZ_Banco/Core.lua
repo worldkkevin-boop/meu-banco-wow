@@ -251,8 +251,53 @@ local function clearGuildScan()
     local char = UnitName("player")
     if KZ_BancoDB and KZ_BancoDB[char] then
         KZ_BancoDB[char].guildbank = {}
+        KZ_BancoDB[char].logs = {}
     end
-    DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " |cffff9900Banco da Guilda Resetado!|r Abra uma aba e use /banco guild.")
+    DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " |cffff9900Banco da Guilda e Logs Resetados!|r Abra uma aba e use /banco guild.")
+end
+
+local function scanGuildLog()
+    local f = getglobal("GuildBankFrameLog")
+    if not f then
+        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " |cffff0000Erro:|r GuildBankFrameLog nao encontrado. Abra o banco da guilda na aba de logs primeiro.")
+        return
+    end
+
+    local count = 0
+    local char = UnitName("player")
+    if not KZ_BancoDB then KZ_BancoDB = {} end
+    if not KZ_BancoDB[char] then KZ_BancoDB[char] = {} end
+    if not KZ_BancoDB[char].logs then KZ_BancoDB[char].logs = {} end
+
+    -- Extrai todos os FontStrings da ScrollingMessageFrame (Vanilla trick)
+    local regions = { f:GetRegions() }
+    for _, r in ipairs(regions) do
+        if r and type(r.GetObjectType) == "function" and r:GetObjectType() == "FontString" then
+            local text = r:GetText()
+            if text and text ~= "" then
+                -- Limpa cores
+                text = stripColor(text)
+                
+                -- Evita duplicatas exatas na mesma sessão
+                local isDup = false
+                for _, exist in ipairs(KZ_BancoDB[char].logs) do
+                    if exist == text then isDup = true; break end
+                end
+                
+                if not isDup then
+                    table.insert(KZ_BancoDB[char].logs, text)
+                    count = count + 1
+                end
+            end
+        end
+    end
+
+    if count > 0 then
+        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " |cff00ff00Logs Escaneados:|r " .. count .. " novas linhas capturadas.")
+        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Total acumulado: " .. table.getn(KZ_BancoDB[char].logs) .. " linhas.")
+    else
+        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Nenhuma linha nova de log encontrada nesta tela.")
+    end
 end
 
 -- ======================== POPUP ========================
@@ -322,13 +367,22 @@ local function serializeItems(items)
     return result
 end
 
-local function generateCode(char, bagItems, bankItems, guildItems2)
+local function serializeLogs(logs)
+    if not logs or table.getn(logs) == 0 then return "" end
+    local result = ""
+    for i, line in ipairs(logs) do
+        if i > 1 then result = result .. "|" end
+        result = result .. esc(line)
+    end
+    return result
+end
+
+local function generateCode(char, bagItems, bankItems, guildItems2, logs)
     local code = "BANCO1;" .. esc(char) .. ";" .. date("%Y-%m-%d %H:%M:%S")
     code = code .. ";" .. serializeItems(bagItems)
     code = code .. ";" .. serializeItems(bankItems)
-    if guildItems2 and table.getn(guildItems2) > 0 then
-        code = code .. ";" .. serializeItems(guildItems2)
-    end
+    code = code .. ";" .. (guildItems2 and serializeItems(guildItems2) or "")
+    code = code .. ";" .. serializeLogs(logs)
     return code
 end
 
@@ -370,14 +424,16 @@ local function cmdCodigo()
     local bagItems   = scanBags()
     local bankItems  = KZ_BancoDB[char].bank or {}
     local guildItems2 = KZ_BancoDB[char].guildbank or {}
-    local code = generateCode(char, bagItems, bankItems, guildItems2)
+    local logs = KZ_BancoDB[char].logs or {}
+    local code = generateCode(char, bagItems, bankItems, guildItems2, logs)
 
     showCode(code)
     if ExportFile then ExportFile("kz_banco_" .. char .. ".txt", code) end
 
     DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Bags: " .. table.getn(bagItems) ..
         " | Bau: " .. table.getn(bankItems) ..
-        " | Guilda: " .. table.getn(guildItems2))
+        " | Guilda: " .. table.getn(guildItems2) ..
+        " | Logs: " .. table.getn(logs))
 end
 
 SLASH_KZ_BANCO1 = "/banco"
@@ -388,6 +444,8 @@ SlashCmdList["KZ_BANCO"] = function(msg)
         autoScanGuildTab()
     elseif cmd == "guild clear" then
         clearGuildScan()
+    elseif cmd == "log" then
+        scanGuildLog()
     elseif cmd == "codigo" or cmd == "code" or cmd == "" then
         cmdCodigo()
     elseif cmd == "scan" then
@@ -401,12 +459,13 @@ SlashCmdList["KZ_BANCO"] = function(msg)
             KZ_BancoDB[char].bank = bankItems
             DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Bags: " .. table.getn(bagItems) .. " | Bau: " .. table.getn(bankItems))
         else
-            DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Bags: " .. table.getn(bag) .. " itens.")
+            DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Bags: " .. table.getn(bagItems) .. " itens.")
         end
     elseif cmd == "help" then
         DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " /banco             — gera codigo (popup para copiar)")
         DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " /banco guild       — escaneia a aba aberta do banco da guilda imediatamente")
-        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " /banco guild clear — zera o banco da guilda (use antes de escanear)")
+        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " /banco log         — escaneia o painel de LOG (Items ou Money) aberto no banco")
+        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " /banco guild clear — zera o banco da guilda e logs acumulados")
         DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " /banco scan        — escaneia bags manualmente")
     else
         DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Use /banco help")
