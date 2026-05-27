@@ -443,7 +443,7 @@
     <div class="stat"><div class="stat-val" id="s-update" style="font-size:16px; margin-top: 10px;"></div><div class="stat-lbl">Última Atualização</div></div>
   </div>
   
-  <div class="item-grid" id="item-grid"></div>
+  <div class="item-grid" id="item-grid" style="display:grid;"></div>
   
   <div class="empty" id="empty-msg">
     <div class="big">🎒</div>
@@ -649,7 +649,8 @@ function parseCode(code){
     lastUpdate:p[2],
     bags:      parseItems(p[3]),
     bank:      parseItems(p[4]||""),
-    guild:     parseItems(p.slice(5).join("|")||""),
+    guild:     parseItems(p[5]||""),
+    logs:      (p[6]||"").split("|").filter(function(x){return x && x!=="";})
   };
 }
 
@@ -664,7 +665,7 @@ function doImport(){
   if(!code){ showAlert("import-alert","Cole um código BANCO1 primeiro.",false); return; }
   var parsed=parseCode(code);
   if(!parsed){ showAlert("import-alert","Código inválido. Deve começar com BANCO1;",false); return; }
-  DB[parsed.char]={ lastUpdate:parsed.lastUpdate, bags:parsed.bags, bank:parsed.bank, guild:parsed.guild };
+  DB[parsed.char]={ lastUpdate:parsed.lastUpdate, bags:parsed.bags, bank:parsed.bank, guild:parsed.guild, logs:parsed.logs };
   saveStorage();
   showAlert("import-alert","Importado com sucesso! ("+parsed.char+")",true);
   document.getElementById("import-input").value="";
@@ -715,6 +716,7 @@ function renderSourceTabs(){
     {key:"bags",  label:"Bolsas", count:(d.bags||[]).length},
     {key:"bank",  label:"Baú Pessoal",  count:(d.bank||[]).length},
     {key:"guild", label:"Guilda", count:(d.guild||[]).length},
+    {key:"logs",  label:"Histórico", count:(d.logs||[]).length},
   ];
   el.innerHTML=tabs.map(function(t){
     return '<button class="src-btn'+(currentTab===t.key?" active":"")+'" onclick="setTab(\''+t.key+'\')">'
@@ -790,6 +792,41 @@ function renderEmpty(){
 function render(){
   if(!currentChar||!DB[currentChar]){ renderEmpty(); return; }
   var d=DB[currentChar];
+  var filtersBar=document.querySelector(".filters-bar");
+  var grid=document.getElementById("item-grid");
+  var emsg=document.getElementById("empty-msg");
+  
+  if(currentTab==="logs"){
+    filtersBar.style.display="none";
+    var logs=d.logs||[];
+    if(logs.length===0){
+      grid.innerHTML="";
+      emsg.innerHTML="<div class='big'>📜</div><h3>Nenhum histórico encontrado.</h3><p>Use '/banco log' no jogo enquanto estiver com a aba Log aberta.</p>";
+      emsg.style.display="flex";
+      return;
+    }
+    emsg.style.display="none";
+    grid.style.display="block";
+    
+    var logsHtml = '<div style="background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:12px; padding:20px; font-family:monospace; font-size:14px; max-height: 600px; overflow-y:auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-top:20px;">';
+    
+    logs.forEach(function(l){
+      var line = escHtml(l);
+      line = line.replace(/^([^\s]+) (deposited|withdrew)/, function(m, p1, p2){
+        var color = p2 === "deposited" ? "#1eff00" : "#ff5555";
+        return '<strong style="color:var(--gold)">' + p1 + '</strong> <span style="color:'+color+'">' + p2 + '</span>';
+      });
+      line = line.replace(/ (\d+g|\d+s|\d+c) /g, ' <strong style="color:var(--gold)">$1</strong> ');
+      
+      logsHtml += '<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">' + line + '</div>';
+    });
+    logsHtml += '</div>';
+    grid.innerHTML = logsHtml;
+    return;
+  }
+  
+  filtersBar.style.display="flex";
+  grid.style.display="grid";
   var source= currentTab==="bags"?(d.bags||[]): currentTab==="bank"?(d.bank||[]):(d.guild||[]);
 
   var filter=(document.getElementById("search").value||"").toLowerCase();
