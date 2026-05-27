@@ -1,0 +1,8 @@
+## Interface: 11200
+## Title: KZ Banco
+## Notes: Exporta bag e bau do personagem para o site
+## Author: Kevin
+## Version: 1.0
+## SavedVariables: KZ_BancoDB
+
+Core.lua
