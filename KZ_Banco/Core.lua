@@ -257,11 +257,13 @@ local function clearGuildScan()
 end
 
 local function scanGuildLog()
-    local f = getglobal("GuildBankFrameLog")
-    if not f then
-        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " |cffff0000Erro:|r GuildBankFrameLog nao encontrado. Abra o banco da guilda na aba de logs primeiro.")
-        return
-    end
+    local possibleFrames = {
+        "GuildBankFrameLog",
+        "GuildBankMoneyLogFrame",
+        "GuildBankFrameMoneyLog",
+        "GuildBankLogMoney",
+        "GuildBankMoneyFrame"
+    }
 
     local count = 0
     local char = UnitName("player")
@@ -269,34 +271,59 @@ local function scanGuildLog()
     if not KZ_BancoDB[char] then KZ_BancoDB[char] = {} end
     if not KZ_BancoDB[char].logs then KZ_BancoDB[char].logs = {} end
 
-    -- Extrai todos os FontStrings da ScrollingMessageFrame (Vanilla trick)
-    local regions = { f:GetRegions() }
-    for _, r in ipairs(regions) do
-        if r and type(r.GetObjectType) == "function" and r:GetObjectType() == "FontString" then
-            local text = r:GetText()
-            if text and text ~= "" then
-                -- Limpa cores
-                text = stripColor(text)
-                
-                -- Evita duplicatas exatas na mesma sessão
-                local isDup = false
-                for _, exist in ipairs(KZ_BancoDB[char].logs) do
-                    if exist == text then isDup = true; break end
-                end
-                
-                if not isDup then
-                    table.insert(KZ_BancoDB[char].logs, text)
-                    count = count + 1
+    -- Busca recursiva em todos os filhos e regioes
+    local function searchFontStrings(frame)
+        if not frame then return end
+        
+        -- Busca nas regioes do frame
+        if type(frame.GetRegions) == "function" then
+            local regions = { frame:GetRegions() }
+            for _, r in ipairs(regions) do
+                if r and type(r.GetObjectType) == "function" and r:GetObjectType() == "FontString" then
+                    local text = r:GetText()
+                    if text and text ~= "" and (string.find(text, "deposited") or string.find(text, "withdrew")) then
+                        text = stripColor(text)
+                        local isDup = false
+                        for _, exist in ipairs(KZ_BancoDB[char].logs) do
+                            if exist == text then isDup = true; break end
+                        end
+                        if not isDup then
+                            table.insert(KZ_BancoDB[char].logs, text)
+                            count = count + 1
+                        end
+                    end
                 end
             end
         end
+
+        -- Busca nos filhos do frame
+        if type(frame.GetChildren) == "function" then
+            local children = { frame:GetChildren() }
+            for _, c in ipairs(children) do
+                searchFontStrings(c)
+            end
+        end
+    end
+
+    local foundAnyFrame = false
+    for _, fname in ipairs(possibleFrames) do
+        local f = getglobal(fname)
+        if f then
+            foundAnyFrame = true
+            searchFontStrings(f)
+        end
+    end
+
+    if not foundAnyFrame then
+        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " |cffff0000Erro:|r Nenhuma aba de logs foi encontrada na tela. Abra a aba de Log ou Money Log primeiro.")
+        return
     end
 
     if count > 0 then
         DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " |cff00ff00Logs Escaneados:|r " .. count .. " novas linhas capturadas.")
         DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Total acumulado: " .. table.getn(KZ_BancoDB[char].logs) .. " linhas.")
     else
-        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Nenhuma linha nova de log encontrada nesta tela.")
+        DEFAULT_CHAT_FRAME:AddMessage(ADDON .. " Nenhuma linha nova de log encontrada nesta tela. (Pode estar vazia ou a janela e protegida)")
     end
 end
 
